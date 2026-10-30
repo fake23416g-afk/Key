@@ -1,166 +1,6 @@
--- Invisible key loader
--- SECRET must match inv_keygen.ps1
-local SCRIPT_URL = "https://raw.githubusercontent.com/fake23416g-afk/Invisible/refs/heads/main/inv"
-
--- @core-start
-local SECRET = "INV-2026-supreme-7f3a9c21d4b8e6f0-CHANGE-ME"
-
-local band = bit32.band
-local bor = bit32.bor
-local bxor = bit32.bxor
-local bnot = bit32.bnot
-local lshift = bit32.lshift
-local rshift = bit32.rshift
-
-local SHA256_K = {
-    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
-}
-
-local function rrot(x, n)
-    return bor(rshift(x, n), lshift(x, 32 - n))
-end
-
-local function sha256Hex(message)
-    local length = #message
-    local bitLength = length * 8
-    message = message .. "\128"
-    local pad = (56 - (length + 1) % 64) % 64
-    message = message .. string.rep("\0", pad)
-    local high = math.floor(bitLength / 4294967296)
-    local low = bitLength % 4294967296
-    message = message .. string.char(
-        math.floor(high / 16777216) % 256, math.floor(high / 65536) % 256,
-        math.floor(high / 256) % 256, high % 256,
-        math.floor(low / 16777216) % 256, math.floor(low / 65536) % 256,
-        math.floor(low / 256) % 256, low % 256
-    )
-
-    local h0, h1, h2, h3 = 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a
-    local h4, h5, h6, h7 = 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
-    local w = {}
-
-    for chunk = 1, #message, 64 do
-        for index = 0, 15 do
-            local offset = chunk + index * 4
-            w[index] = band(
-                lshift(string.byte(message, offset), 24)
-                    + lshift(string.byte(message, offset + 1), 16)
-                    + lshift(string.byte(message, offset + 2), 8)
-                    + string.byte(message, offset + 3),
-                0xFFFFFFFF
-            )
-        end
-        for index = 16, 63 do
-            local x = w[index - 15]
-            local y = w[index - 2]
-            local s0 = bxor(rrot(x, 7), rrot(x, 18), rshift(x, 3))
-            local s1 = bxor(rrot(y, 17), rrot(y, 19), rshift(y, 10))
-            w[index] = band(w[index - 16] + s0 + w[index - 7] + s1, 0xFFFFFFFF)
-        end
-
-        local a, b, c, d = h0, h1, h2, h3
-        local e, f, g, h = h4, h5, h6, h7
-
-        for index = 0, 63 do
-            local s1 = bxor(rrot(e, 6), rrot(e, 11), rrot(e, 25))
-            local ch = bxor(band(e, f), band(bnot(e), g))
-            local temp1 = band(h + s1 + ch + SHA256_K[index + 1] + w[index], 0xFFFFFFFF)
-            local s0 = bxor(rrot(a, 2), rrot(a, 13), rrot(a, 22))
-            local maj = bxor(band(a, b), band(a, c), band(b, c))
-            local temp2 = band(s0 + maj, 0xFFFFFFFF)
-
-            h = g
-            g = f
-            f = e
-            e = band(d + temp1, 0xFFFFFFFF)
-            d = c
-            c = b
-            b = a
-            a = band(temp1 + temp2, 0xFFFFFFFF)
-        end
-
-        h0 = band(h0 + a, 0xFFFFFFFF)
-        h1 = band(h1 + b, 0xFFFFFFFF)
-        h2 = band(h2 + c, 0xFFFFFFFF)
-        h3 = band(h3 + d, 0xFFFFFFFF)
-        h4 = band(h4 + e, 0xFFFFFFFF)
-        h5 = band(h5 + f, 0xFFFFFFFF)
-        h6 = band(h6 + g, 0xFFFFFFFF)
-        h7 = band(h7 + h, 0xFFFFFFFF)
-    end
-
-    return string.format("%08x%08x%08x%08x%08x%08x%08x%08x", h0, h1, h2, h3, h4, h5, h6, h7)
-end
-
-local function hmacHex(key, message)
-    if #key > 64 then
-        local digest = sha256Hex(key)
-        local binary = {}
-        for byte in digest:gmatch("%x%x") do
-            binary[#binary + 1] = string.char(tonumber(byte, 16))
-        end
-        key = table.concat(binary)
-    end
-    key = key .. string.rep("\0", 64 - #key)
-
-    local inner, outer = {}, {}
-    for index = 1, 64 do
-        local byte = string.byte(key, index)
-        inner[index] = string.char(bxor(byte, 0x36))
-        outer[index] = string.char(bxor(byte, 0x5C))
-    end
-
-    local innerHash = sha256Hex(table.concat(inner) .. message)
-    local innerBin = {}
-    for byte in innerHash:gmatch("%x%x") do
-        innerBin[#innerBin + 1] = string.char(tonumber(byte, 16))
-    end
-    return sha256Hex(table.concat(outer) .. table.concat(innerBin))
-end
-
--- key format: INV1-<expires unix or 0>-<hwid sha256 prefix or ANY>-<nonce>-<signature>
-local function validateKey(rawKey, hwid, now)
-    if type(rawKey) ~= "string" or rawKey == "" then
-        return false, "Ключ не введён"
-    end
-
-    local key = rawKey:gsub("%s+", ""):upper()
-    local expiresText, hwidPart, nonce, signature = key:match("^INV1%-(%d+)%-([%u%d]+)%-(%x+)%-(%x+)$")
-    if not expiresText or #nonce ~= 8 or #signature ~= 16 then
-        return false, "Неверный формат ключа"
-    end
-
-    local payload = "INV1-" .. expiresText .. "-" .. hwidPart .. "-" .. nonce
-    if hmacHex(SECRET, payload):sub(1, 16):upper() ~= signature then
-        return false, "Ключ недействителен"
-    end
-
-    local expires = tonumber(expiresText) or 0
-    now = now or os.time()
-    if expires ~= 0 and now >= expires then
-        return false, "Срок действия ключа истёк"
-    end
-
-    if hwidPart ~= "ANY" then
-        if not hwid then
-            return false, "Ключ привязан к HWID, а исполнитель его не отдаёт"
-        end
-        local mine = sha256Hex(hwid):sub(1, 8):upper()
-        if mine ~= hwidPart then
-            return false, "Ключ привязан к другому устройству"
-        end
-    end
-
-    return true, "Ключ действителен", expires ~= 0 and (expires - now) or nil
-end
--- @core-end
+-- Invisible key loader (Cloudflare Worker)
+local WORKER_URL = "https://keyload.fake23416g.workers.dev/load"
+local HttpService = game:GetService("HttpService")
 
 local function notify(text, isError)
     pcall(function()
@@ -237,12 +77,30 @@ local function saveKey(key)
     end)
 end
 
-local function launch()
+local hwid = getHwid()
+
+local function fetchScript(key)
+    local url = WORKER_URL
+        .. "?key=" .. HttpService:UrlEncode(key)
+        .. "&hwid=" .. HttpService:UrlEncode(hwid or "")
+
+    local ok, response = pcall(function()
+        return game:HttpGet(url)
+    end)
+    if not ok or type(response) ~= "string" then
+        return nil, "Нет связи с сервером"
+    end
+    if response:sub(1, 6) == "--ERR:" then
+        return nil, response:sub(7)
+    end
+    if #response < 10 then
+        return nil, "Сервер вернул пустой ответ"
+    end
+    return response
+end
+
+local function launch(source)
     local ok, err = pcall(function()
-        local source = game:HttpGet(SCRIPT_URL)
-        if type(source) ~= "string" or #source < 10 then
-            error("сервер вернул пустой ответ")
-        end
         local chunk, compileError = loadstring(source)
         if not chunk then
             error(tostring(compileError))
@@ -254,13 +112,11 @@ local function launch()
     end
 end
 
-local hwid = getHwid()
-
 local saved = readSavedKey()
 if saved then
-    local valid, message = validateKey(saved, hwid)
-    if valid then
-        launch()
+    local source = fetchScript(saved)
+    if source then
+        launch(source)
         return
     end
 end
@@ -407,28 +263,25 @@ closeButton.Parent = frame
 Instance.new("UICorner", closeButton).CornerRadius = UDim.new(0, 7)
 
 local function attempt()
-    local valid, message, secondsLeft = validateKey(keyBox.Text, hwid)
-    if not valid then
+    local key = keyBox.Text:gsub("%s+", ""):upper()
+    status.Text = "Проверяю ключ..."
+    status.TextColor3 = Color3.fromRGB(160, 170, 190)
+
+    local source, message = fetchScript(key)
+    if not source then
         status.Text = message
         status.TextColor3 = Color3.fromRGB(255, 95, 95)
         return
     end
 
-    local key = keyBox.Text:gsub("%s+", ""):upper()
     saveKey(key)
-
-    if secondsLeft then
-        local days = math.floor(secondsLeft / 86400)
-        status.Text = string.format("Ключ принят, осталось %d дн. Запускаю...", days)
-    else
-        status.Text = "Ключ принят. Запускаю..."
-    end
+    status.Text = "Ключ принят. Запускаю..."
     status.TextColor3 = Color3.fromRGB(80, 220, 140)
     activate.Text = "Запуск..."
     activate.BackgroundColor3 = Color3.fromRGB(0, 130, 100)
     task.wait(0.4)
     screen:Destroy()
-    launch()
+    launch(source)
 end
 
 activate.MouseButton1Click:Connect(attempt)
@@ -465,3 +318,5 @@ game:GetService("UserInputService").InputChanged:Connect(function(input)
         )
     end
 end)
+
+
